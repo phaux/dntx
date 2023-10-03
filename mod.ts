@@ -43,49 +43,53 @@ const flags = parse(Deno.args, {
   },
 });
 
-if (flags["help"]) {
-  // take help text from README.md from between triple backticks and print it
-  const readme = await Deno.readTextFile(
-    new URL("./README.md", import.meta.url),
-  );
-  const helpText = readme.match(/```man\n([\s\S]*?)\n```\n/)?.[1];
-  if (helpText) {
-    console.log(helpText);
+if (import.meta.main) {
+  if (flags["help"]) {
+    // take help text from README.md from between triple backticks and print it
+    const readme = await Deno.readTextFile(
+      new URL("./README.md", import.meta.url),
+    );
+    const helpText = readme.match(/```man\n([\s\S]*?)\n```\n/)?.[1];
+    if (helpText) {
+      console.log(helpText);
+    } else {
+      console.log("README.md not found");
+    }
   } else {
-    console.log("README.md not found");
-  }
-} else {
-  const buildOptions: BuildOptions = {
-    entryPoints: getEntryPoints(flags),
-    compilerOptions: {
-      lib: getLib(flags),
-    },
-    shims: getShims(flags),
-    package: {
-      name: await getName(flags),
-      version: await getVersion(flags),
-      description: await getDescription(flags),
-      license: await getLicense(flags),
-      repository: await getRepository(flags),
-    },
-    scriptModule: getScriptModule(flags),
-    test: getTest(flags),
-    outDir: getOutDir(flags),
-  };
+    const buildOptions: BuildOptions = {
+      entryPoints: getEntryPoints(flags),
+      compilerOptions: {
+        lib: getLib(flags),
+      },
+      shims: getShims(flags),
+      package: {
+        name: await getName(flags),
+        version: await getVersion(flags),
+        description: await getDescription(flags),
+        license: await getLicense(flags),
+        repository: await getRepository(flags),
+      },
+      scriptModule: getScriptModule(flags),
+      test: getTest(flags),
+      outDir: getOutDir(flags),
+    };
 
-  console.log("[dntx] Cleaning outDir");
-  await emptyDir(buildOptions.outDir);
-  console.log("[dntx] Building with dnt");
-  await build(buildOptions);
-  console.log("[dntx] Copying files");
-  await copyFiles(buildOptions.outDir, flags);
+    console.log("[dntx] Cleaning outDir");
+    await emptyDir(buildOptions.outDir);
+    console.log("[dntx] Building with dnt");
+    await build(buildOptions);
+    console.log("[dntx] Copying files");
+    await copyFiles(buildOptions.outDir, flags);
+  }
 }
 
-function getOutDir(flags: { "out-dir"?: string }): BuildOptions["outDir"] {
+export function getOutDir(
+  flags: { "out-dir"?: string },
+): BuildOptions["outDir"] {
   return flags["out-dir"] ?? "npm";
 }
 
-function getEntryPoints(
+export function getEntryPoints(
   flags: { "entry-point": string[] },
 ): BuildOptions["entryPoints"] {
   // parse `--entry-point=type:name=path` into `{ name, path, kind }`
@@ -106,7 +110,7 @@ function getEntryPoints(
   });
 }
 
-function getLib(
+export function getLib(
   flags: { "lib": string[] },
 ): Required<BuildOptions>["compilerOptions"]["lib"] {
   const libs = ["ES2022", "DOM", ...flags["lib"] as any];
@@ -114,7 +118,7 @@ function getLib(
   return libs;
 }
 
-function getShims(flags: { "shim": string[] }): BuildOptions["shims"] {
+export function getShims(flags: { "shim": string[] }): BuildOptions["shims"] {
   // parse `--shim=shimName[:mode]` into `{ shimName: mode }` (default mode true)
   const shims: Omit<BuildOptions["shims"], "custom" | "customDev"> = {
     deno: true,
@@ -128,7 +132,7 @@ function getShims(flags: { "shim": string[] }): BuildOptions["shims"] {
   return shims;
 }
 
-async function getName(
+export async function getName(
   flags: { "name"?: string },
 ): Promise<BuildOptions["package"]["name"]> {
   if (flags["name"]) return flags["name"];
@@ -140,7 +144,7 @@ async function getName(
   return name;
 }
 
-async function getVersion(
+export async function getVersion(
   flags: { "version"?: string },
 ): Promise<BuildOptions["package"]["version"]> {
   if (flags["version"]) return flags["version"];
@@ -154,7 +158,7 @@ async function getVersion(
   return version;
 }
 
-async function getDescription(
+export async function getDescription(
   flags: { "description"?: string },
 ): Promise<BuildOptions["package"]["description"]> {
   if (flags["description"]) return flags["description"];
@@ -165,7 +169,7 @@ async function getDescription(
   return description;
 }
 
-async function getLicense(
+export async function getLicense(
   flags: { "license"?: string },
 ): Promise<BuildOptions["package"]["license"]> {
   if (flags["license"]) return flags["license"];
@@ -184,7 +188,7 @@ async function getLicense(
   }
 }
 
-async function getRepository(
+export async function getRepository(
   flags: { "repository"?: string },
 ): Promise<BuildOptions["package"]["repository"]> {
   if (flags["repository"]) {
@@ -199,7 +203,7 @@ async function getRepository(
   return { type: "git", url: repositoryUrl };
 }
 
-function getScriptModule(
+export function getScriptModule(
   flags: { "no-script-module": boolean },
 ): BuildOptions["scriptModule"] {
   const scriptModule = !flags["no-script-module"] ? "cjs" : false;
@@ -207,13 +211,16 @@ function getScriptModule(
   return scriptModule;
 }
 
-function getTest(flags: { "no-test": boolean }): BuildOptions["test"] {
+export function getTest(flags: { "no-test": boolean }): BuildOptions["test"] {
   const test = !flags["no-test"];
   console.log("[dntx] Using test:", test);
   return test;
 }
 
-async function copyFiles(outDir: string, flags: { "copy-file": string[] }) {
+export async function copyFiles(
+  outDir: string,
+  flags: { "copy-file": string[] },
+) {
   const copyFiles: string[] = [];
   // copy README.md if it exists
   if (await Deno.stat("README.md").catch(() => null)) {
