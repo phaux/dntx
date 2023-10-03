@@ -58,6 +58,11 @@ OPTIONS:
   --no-test
     Disable running tests.
 
+  --declaration
+    Mode for generating declaration files.
+    Either inline or separate.
+    Defaults to inline.
+
   -o, --out-dir <outDir>
     Output directory.
     Defaults to npm.

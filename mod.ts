@@ -20,6 +20,7 @@ const flags = parse(Deno.args, {
     "description",
     "license",
     "repository",
+    "declaration",
     "out-dir",
     "copy-file",
   ],
@@ -71,6 +72,7 @@ if (import.meta.main) {
       },
       scriptModule: getScriptModule(flags),
       test: getTest(flags),
+      declaration: getDeclaration(flags),
       outDir: getOutDir(flags),
     };
 
@@ -83,31 +85,25 @@ if (import.meta.main) {
   }
 }
 
-export function getOutDir(
-  flags: { "out-dir"?: string },
-): BuildOptions["outDir"] {
-  return flags["out-dir"] ?? "npm";
-}
-
 export function getEntryPoints(
   flags: { "entry-point": string[] },
 ): BuildOptions["entryPoints"] {
   // parse `--entry-point=type:name=path` into `{ name, path, kind }`
-  return flags["entry-point"].map((entryPointString) => {
+  const entryPoints: BuildOptions["entryPoints"] = [];
+  for (const entryPointString of flags["entry-point"]) {
     const [pairString, kind] = entryPointString.split(":", 2).reverse();
     const [path, name] = pairString.split("=", 2).reverse();
     if (name) {
-      console.log("[dntx] Using entryPoint:", { name, path, kind });
-      return { name, path, kind: kind as any };
+      entryPoints.push({ name, path, kind: kind as any });
     } else if (kind) {
-      console.log("[dntx] Using entryPoint:", { path, kind });
       // https://github.com/denoland/dnt/issues/338
-      return { name: undefined as any, path, kind: kind as any };
+      entryPoints.push({ name: undefined as any, path, kind: kind as any });
     } else {
-      console.log("[dntx] Using entryPoint:", path);
-      return path;
+      entryPoints.push(path);
     }
-  });
+  }
+  console.log("[dntx] Using entryPoints:", entryPoints);
+  return entryPoints;
 }
 
 export function getLib(
@@ -135,55 +131,67 @@ export function getShims(flags: { "shim": string[] }): BuildOptions["shims"] {
 export async function getName(
   flags: { "name"?: string },
 ): Promise<BuildOptions["package"]["name"]> {
-  if (flags["name"]) return flags["name"];
+  if (flags["name"]) {
+    console.log("[dntx] Using package.name:", flags["name"]);
+    return flags["name"];
+  }
   // get name from git remote origin last path segment, without `.git`
   const remote = await runCommand("git", "remote", "get-url", "origin");
   let name = remote.trim().split("/").pop()!;
   if (name.endsWith(".git")) name = name.slice(0, -4);
-  console.log("[dntx] Using package.name:", name);
+  console.log("[dntx] Detected package.name:", name);
   return name;
 }
 
 export async function getVersion(
   flags: { "version"?: string },
 ): Promise<BuildOptions["package"]["version"]> {
-  if (flags["version"]) return flags["version"];
+  if (flags["version"]) {
+    console.log("[dntx] Using package.version:", flags["version"]);
+    return flags["version"];
+  }
   // get version from latest git tag, without leading `v`
   let version = await runCommand("git", "describe", "--tags", "--abbrev=0");
   version = version.trim();
   if (version.startsWith("v")) {
     version = version.slice(1);
   }
-  console.log("[dntx] Using package.version:", version);
+  console.log("[dntx] Detected package.version:", version);
   return version;
 }
 
 export async function getDescription(
   flags: { "description"?: string },
 ): Promise<BuildOptions["package"]["description"]> {
-  if (flags["description"]) return flags["description"];
+  if (flags["description"]) {
+    console.log("[dntx] Using package.description:", flags["description"]);
+    return flags["description"];
+  }
   // read README and find first line that begins with a word character
   const readme = await Deno.readTextFile("README.md");
   const description = readme.split("\n").find((line) => /^\w/.test(line))!;
-  console.log("[dntx] Using package.description:", description);
+  console.log("[dntx] Detected package.description:", description);
   return description;
 }
 
 export async function getLicense(
   flags: { "license"?: string },
 ): Promise<BuildOptions["package"]["license"]> {
-  if (flags["license"]) return flags["license"];
+  if (flags["license"]) {
+    console.log("[dntx] Using package.license:", flags["license"]);
+    return flags["license"];
+  }
   // read LICENSE and take first word of the license that isn't "the"
   try {
     const licenseText = await Deno.readTextFile("LICENSE");
     for (const word of licenseText.split(/\s+/)) {
       if (!word) continue;
       if (word.toLowerCase() === "the") continue;
-      console.log("[dntx] Using package.license:", word);
+      console.log("[dntx] Detected package.license:", word);
       return word;
     }
   } catch {
-    console.log("[dntx] Using package.license: MIT");
+    console.log("[dntx] Using default package.license: MIT");
     return "MIT";
   }
 }
@@ -192,6 +200,7 @@ export async function getRepository(
   flags: { "repository"?: string },
 ): Promise<BuildOptions["package"]["repository"]> {
   if (flags["repository"]) {
+    console.log("[dntx] Using package.repository.url:", flags["repository"]);
     return { type: "git", url: flags["repository"] };
   }
   // get repository from git remote origin
@@ -199,7 +208,7 @@ export async function getRepository(
   const [remoteOrigin, remotePath] = remote.trim().split(":", 2);
   const [_remoteUser, remoteHostname] = remoteOrigin.split("@", 2);
   const repositoryUrl = "git+https://" + remoteHostname + "/" + remotePath;
-  console.log("[dntx] Using package.repository.url:", repositoryUrl);
+  console.log("[dntx] Detected package.repository.url:", repositoryUrl);
   return { type: "git", url: repositoryUrl };
 }
 
@@ -215,6 +224,26 @@ export function getTest(flags: { "no-test": boolean }): BuildOptions["test"] {
   const test = !flags["no-test"];
   console.log("[dntx] Using test:", test);
   return test;
+}
+
+export function getOutDir(
+  flags: { "out-dir"?: string },
+): BuildOptions["outDir"] {
+  if (flags["out-dir"]) {
+    console.log("[dntx] Using outDir:", flags["out-dir"]);
+    return flags["out-dir"];
+  }
+  console.log("[dntx] Using default outDir: npm");
+  return "npm";
+}
+
+export function getDeclaration(
+  flags: { "declaration"?: string },
+): BuildOptions["declaration"] {
+  if (flags["declaration"]) {
+    console.log("[dntx] Using declaration:", flags["declaration"]);
+    return flags["declaration"] as any;
+  }
 }
 
 export async function copyFiles(
