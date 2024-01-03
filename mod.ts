@@ -58,7 +58,7 @@ if (import.meta.main) {
     }
   } else {
     const buildOptions: BuildOptions = {
-      entryPoints: getEntryPoints(flags),
+      entryPoints: await getEntryPoints(flags),
       compilerOptions: {
         lib: getLib(flags),
       },
@@ -85,22 +85,37 @@ if (import.meta.main) {
   }
 }
 
-export function getEntryPoints(
-  flags: { "entry-point": string[] },
-): BuildOptions["entryPoints"] {
-  // parse `--entry-point=type:name=path` into `{ name, path, kind }`
+export async function getEntryPoints(
+  flags: { "entry-point": string[]; "name"?: string },
+): Promise<BuildOptions["entryPoints"]> {
+  // parse `--entry-point=kind:name=path` into `{ kind, name, path }`
   const entryPoints: BuildOptions["entryPoints"] = [];
   for (const entryPointString of flags["entry-point"]) {
     const [pairString, kind] = entryPointString.split(":", 2).reverse();
-    const [path, name] = pairString.split("=", 2).reverse();
-    if (name) {
-      entryPoints.push({ name, path, kind: kind as any });
-    } else if (kind) {
-      // https://github.com/denoland/dnt/issues/338
-      entryPoints.push({ name: undefined as any, path, kind: kind as any });
-    } else {
-      entryPoints.push(path);
+    const [path, name] = pairString?.split("=", 2).reverse() ?? [];
+    if (kind != null && kind !== "bin" && kind !== "export") {
+      throw new Error(`Invalid entry point kind: ${kind}`);
     }
+    if (!path) {
+      throw new Error("Entry point path is required");
+    }
+    if (name === "") {
+      throw new Error("Entry point name cannot be empty");
+    }
+    if (!name && !kind) {
+      entryPoints.push(path);
+    } else {
+      entryPoints.push({
+        kind,
+        // https://github.com/denoland/dnt/issues/338
+        name: name ?? (kind === "bin" ? await getName(flags) : "."),
+        path,
+      });
+    }
+  }
+  // if no entrypoints and mod.ts exists, use it
+  if (entryPoints.length === 0 && await Deno.stat("mod.ts").catch(() => null)) {
+    entryPoints.push("mod.ts");
   }
   console.log("[dntx] Using entryPoints:", entryPoints);
   return entryPoints;

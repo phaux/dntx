@@ -6,7 +6,7 @@
 dntx - dnt but as a command
 
 USAGE:
-  deno run -A https://deno.land/x/dntx/mod.ts -e <entrypoint> [OPTIONS]
+  deno run -A https://deno.land/x/dntx/mod.ts [OPTIONS]
 
 OPTIONS:
   -h, --help
@@ -14,10 +14,11 @@ OPTIONS:
 
   -e, --entry-point <[type:][name=]path>
     Entry point to build. 
-    Name is used in package.json exports or bin field.
+    Name is used in package.json exports or bin field (default: .).
     Type is one of: export or bin (default: export).
     Can be used multiple times.
-    Must be specified at least once.
+    Example: -e index.ts -e server=server.ts -e bin:cli=cli.ts
+    Defaults to exporting mod.ts as . if it exists.
 
   -s, --shim <name[:mode]>
     Shim to use. 
