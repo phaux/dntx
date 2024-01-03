@@ -3,7 +3,7 @@ import {
   build,
   BuildOptions,
   emptyDir,
-} from "https://deno.land/x/dnt@0.38.1/mod.ts";
+} from "https://deno.land/x/dnt@0.39.0/mod.ts";
 
 const flags = parse(Deno.args, {
   boolean: [
