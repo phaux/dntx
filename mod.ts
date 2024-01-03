@@ -137,7 +137,7 @@ export async function getName(
   }
   // get name from git remote origin last path segment, without `.git`
   const remote = await runCommand("git", "remote", "get-url", "origin");
-  let name = remote.trim().split("/").pop()!;
+  let name = remote.trim().split(/\/|:/).pop()!;
   if (name.endsWith(".git")) name = name.slice(0, -4);
   console.log("[dntx] Detected package.name:", name);
   return name;
@@ -198,18 +198,32 @@ export async function getLicense(
 
 export async function getRepository(
   flags: { "repository"?: string },
-): Promise<BuildOptions["package"]["repository"]> {
+): Promise<BuildOptions["package"]["repository"] | undefined> {
   if (flags["repository"]) {
     console.log("[dntx] Using package.repository.url:", flags["repository"]);
     return { type: "git", url: flags["repository"] };
   }
   // get repository from git remote origin
   const remote = await runCommand("git", "remote", "get-url", "origin");
-  const [remoteOrigin, remotePath] = remote.trim().split(":", 2);
-  const [_remoteUser, remoteHostname] = remoteOrigin.split("@", 2);
-  const repositoryUrl = "git+https://" + remoteHostname + "/" + remotePath;
-  console.log("[dntx] Detected package.repository.url:", repositoryUrl);
-  return { type: "git", url: repositoryUrl };
+  let match;
+  let repositoryUrl;
+  if (
+    (match = remote.match(/^(?<proto>.*?):\/\/(?<origin>.*?)\/(?<path>.*)$/))
+  ) {
+    // remote is a regular URL
+    repositoryUrl = `${match.groups!.proto}://${match.groups!.origin}/${
+      match.groups!.path
+    }`;
+  } else if (
+    (match = remote.match(/^(?<user>.*?)@(?<origin>.*?):(?<path>.*)$/))
+  ) {
+    // remote is an SSH URL
+    repositoryUrl = `git+https://${match.groups!.origin}/${match.groups!.path}`;
+  }
+  if (repositoryUrl) {
+    console.log("[dntx] Detected package.repository.url:", repositoryUrl);
+    return { type: "git", url: repositoryUrl };
+  }
 }
 
 export function getScriptModule(
@@ -269,7 +283,7 @@ export async function copyFiles(
 async function runCommand(cmd: string, ...args: string[]) {
   const output = await new Deno.Command(cmd, { args }).output();
   if (output.success) {
-    return new TextDecoder().decode(output.stdout);
+    return new TextDecoder().decode(output.stdout).trim();
   } else {
     throw new Error(new TextDecoder().decode(output.stderr));
   }
