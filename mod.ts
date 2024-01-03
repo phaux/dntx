@@ -10,6 +10,9 @@ const flags = parse(Deno.args, {
     "help",
     "no-script-module",
     "no-test",
+    "no-description",
+    "no-license",
+    "no-repository",
   ],
   string: [
     "entry-point",
@@ -66,9 +69,13 @@ if (import.meta.main) {
       package: {
         name: await getName(flags),
         version: await getVersion(flags),
-        description: await getDescription(flags),
-        license: await getLicense(flags),
-        repository: await getRepository(flags),
+        description: flags["no-description"]
+          ? undefined
+          : await getDescription(flags),
+        license: flags["no-license"] ? undefined : await getLicense(flags),
+        repository: flags["no-repository"]
+          ? undefined
+          : await getRepository(flags),
       },
       scriptModule: getScriptModule(flags),
       test: getTest(flags),

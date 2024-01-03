@@ -44,14 +44,23 @@ OPTIONS:
     Package description.
     Defaults to first line of README.md that begins with a word character.
 
+  --no-description
+    Don't include any description in package.json.
+
   -l, --license <license>
     Package license.
     Defaults to first word of LICENSE that isn't "the".
     If LICENSE doesn't exist, defaults to MIT.
 
+  --no-license
+    Don't include any license in package.json.
+
   --repository <repository>
     Package repository URL (the one that usually begins with git+https).
     Defaults to git remote origin, transformed appropriately.
+
+  --no-repository
+    Don't include any repository in package.json.
 
   --no-script-module
     Disable building script module.
