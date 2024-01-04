@@ -62,6 +62,9 @@ OPTIONS:
   --no-repository
     Don't include any repository in package.json.
 
+  --side-effects
+    Don't include "sideEffects: false" in package.json.
+
   --no-script-module
     Disable building script module.
 

@@ -13,6 +13,7 @@ const flags = parse(Deno.args, {
     "no-description",
     "no-license",
     "no-repository",
+    "side-effects",
   ],
   string: [
     "entry-point",
@@ -76,6 +77,7 @@ if (import.meta.main) {
         repository: flags["no-repository"]
           ? undefined
           : await getRepository(flags),
+        sideEffects: flags["side-effects"] ? undefined : false,
       },
       scriptModule: getScriptModule(flags),
       test: getTest(flags),
