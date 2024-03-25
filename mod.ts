@@ -1,11 +1,11 @@
-import { parse } from "https://deno.land/std@0.203.0/flags/mod.ts";
+import { parseArgs } from "https://deno.land/std@0.220.1/cli/parse_args.ts";
 import {
   build,
   BuildOptions,
   emptyDir,
-} from "https://deno.land/x/dnt@0.39.0/mod.ts";
+} from "https://deno.land/x/dnt@0.40.0/mod.ts";
 
-const flags = parse(Deno.args, {
+const flags = parseArgs(Deno.args, {
   boolean: [
     "help",
     "no-script-module",
